@@ -28,13 +28,13 @@ class LlamaSettings: ObservableObject {
     }
     
     init() {
-        self.endpointURL = UserDefaults.standard.string(forKey: "llamaEndpoint") ?? "http://localhost:11434/api/generate"
+        self.endpointURL = UserDefaults.standard.string(forKey: "llamaEndpoint") ?? "http://127.0.0.1:11434/api/generate"
         self.promptTemplate = UserDefaults.standard.string(forKey: "promptTemplate") ?? """
         {
-            "model": "llama2",
-            "prompt": "{{text}}",
-            "temperature": 0.7,
-            "max_tokens": 2000
+          "model": "llama3.2",
+          "prompt": "Please rewrite the following text to improve its clarity, coherence, and grammar. Provide only the improved text, without explanations or additional comments:\n\nOriginal Text:\n{{text}}\n\nImproved Text:",
+          "temperature": 0.7,
+          "max_tokens": 2000
         }
         """
         self.hotkey = UserDefaults.standard.string(forKey: "hotkey") ?? "⌃⇧Space"

@@ -190,21 +190,22 @@ class TextProcessingService: ObservableObject {
         isProcessing = true
         let pasteboard = NSPasteboard.general
         
-        // 1. Save original clipboard content
+        // Save the original clipboard content
         let originalContent = pasteboard.string(forType: .string)
         print("📋 [DEBUG] Original clipboard content:", originalContent ?? "empty")
         
-        // 2. Clear clipboard to ensure we don't get old content
+        // Clear the clipboard to ensure we can detect new content
         pasteboard.clearContents()
         print("🗑️ [DEBUG] Cleared clipboard")
         
-        // 3. Simulate CMD+C to copy selected text
+        // Simulate CMD+C to copy selected text
         simulateCopyKeyPress()
         print("⌨️ [DEBUG] Simulated CMD+C keypress")
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { // Increased delay for reliability
-            // Check if clipboard content changed
+        // Increase delay to allow clipboard to update
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { // Adjust delay if needed
             guard let selectedText = pasteboard.string(forType: .string),
+                  !selectedText.isEmpty,
                   selectedText != originalContent else {
                 print("⚠️ [DEBUG] No new text was copied to clipboard")
                 self.isProcessing = false
@@ -235,6 +236,7 @@ class TextProcessingService: ObservableObject {
             }
         }
     }
+
     
     
     private func simulateCopyKeyPress() {
@@ -262,57 +264,55 @@ class TextProcessingService: ObservableObject {
     }
     
     private func sendToLlama(text: String, completion: @escaping (String?) -> Void) {
-        print("🔧 [DEBUG] Checking UserDefaults:")
-        for (key, value) in UserDefaults.standard.dictionaryRepresentation() {
-            if key.contains("prompt") || key.contains("llama") || key.contains("endpoint") {
-                print("   \(key): \(value)")
-            }
-        }
-        
         guard let promptTemplate = defaults.string(forKey: "promptTemplate"),
               let endpoint = defaults.string(forKey: "llamaEndpoint"),
               let url = URL(string: endpoint) else {
-            print("❌ [DEBUG] Invalid configuration:")
-            print("   Endpoint:", defaults.string(forKey: "llamaEndpoint") ?? "nil")
-            print("   Template:", defaults.string(forKey: "promptTemplate") ?? "nil")
+            print("❌ [DEBUG] Invalid configuration for LLaMA endpoint or prompt template.")
             completion(nil)
             return
         }
-        
+
         let prompt = promptTemplate.replacingOccurrences(of: "{{text}}", with: text)
-        print("📤 [DEBUG] Sending request to:", endpoint)
-        print("📋 [DEBUG] Request payload:", prompt)
-        
+        print("📤 [DEBUG] Sending request to: \(endpoint)")
+        print("📋 [DEBUG] Request payload: \(prompt)")
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = prompt.data(using: .utf8)
-        
+
+        var accumulatedResponse = ""
+
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                print("❌ [DEBUG] Network error:", error.localizedDescription)
+                print("❌ [DEBUG] Network error: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
-            
-            if let data = data,
-               let responseStr = String(data: data, encoding: .utf8) {
-                print("📥 [DEBUG] Raw response:", responseStr)
-                
-                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let response = json["response"] as? String {
-                    print("✅ [DEBUG] Parsed response:", response)
-                    DispatchQueue.main.async {
-                        completion(response)
-                    }
-                } else {
-                    print("❌ [DEBUG] Failed to parse JSON response")
-                    completion(nil)
-                }
-            } else {
-                print("❌ [DEBUG] No data received")
+
+            guard let data = data,
+                  let responseString = String(data: data, encoding: .utf8) else {
+                print("❌ [DEBUG] No data received or invalid encoding")
                 completion(nil)
+                return
             }
+
+            print("📥 [DEBUG] Raw response: \(responseString)")
+
+            // Split response into individual JSON lines
+            let jsonLines = responseString.split(separator: "\n")
+            for line in jsonLines {
+                if let lineData = line.data(using: .utf8),
+                   let jsonObject = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                   let responsePart = jsonObject["response"] as? String {
+                    accumulatedResponse += responsePart
+                } else {
+                    print("⚠️ [DEBUG] Failed to parse JSON line: \(line)")
+                }
+            }
+
+            print("✅ [DEBUG] Final accumulated response: \(accumulatedResponse)")
+            completion(accumulatedResponse)
         }.resume()
     }
 }
