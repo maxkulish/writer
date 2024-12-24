@@ -1,0 +1,24 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="#007AFF"/>
+  
+  <!-- Text bubble icon -->
+  <path d="M 128 156 
+           C 128 134 146 116 168 116 
+           H 344 
+           C 366 116 384 134 384 156 
+           V 276 
+           C 384 298 366 316 344 316 
+           H 256 
+           L 192 380 
+           V 316 
+           H 168 
+           C 146 316 128 298 128 276 
+           Z" 
+        fill="white"/>
+  
+  <!-- Text lines -->
+  <rect x="168" y="156" width="176" height="16" rx="8" fill="#007AFF"/>
+  <rect x="168" y="196" width="136" height="16" rx="8" fill="#007AFF"/>
+  <rect x="168" y="236" width="96" height="16" rx="8" fill="#007AFF"/>
+</svg>
